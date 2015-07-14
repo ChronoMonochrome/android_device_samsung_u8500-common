@@ -174,9 +174,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
     dalvik.vm.heapmaxfree=4m
 PRODUCT_TAGS += dalvik.gc.type-precise
 
-# KSM
-PRODUCT_PROPERTY_OVERRIDES += \
-    ro.ksm.default=1
-
 # Use the non-open-source parts, if they're present
 include vendor/samsung/u8500-common/vendor-common.mk
+
+PRODUCT_PROPERTY_OVERRIDES += \
+	ro.hwui.drop_shadow_cache_size=1 \
+	ro.hwui.gradient_cache_size=0.2 \
+	ro.hwui.layer_cache_size=6 \
+	ro.hwui.path_cache_size=2 \
+	ro.hwui.r_buffer_cache_size=1 \
+	ro.hwui.texture_cache_size=8
