@@ -25,11 +25,28 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.os.Handler;
+import android.os.Message;
+import android.os.AsyncResult;
+import android.os.Parcel;
+import android.os.SystemProperties;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.SignalStrength;
+import static com.android.internal.telephony.RILConstants.*;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DcFailCause;
+import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
+import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
 import com.android.internal.telephony.cdma.SignalToneUtil;
 
@@ -328,54 +345,6 @@ public class SamsungU8500RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected RILRequest findAndRemoveRequestFromList(int serial) {
-        long removalTime = System.currentTimeMillis();
-        long timeDiff = 0;
-        RILRequest rr = null;
-
-        synchronized (mRequestList) {
-
-		rr = mRequestList.get(serial);
-
-                if (rr != null) {
-					mRequestList.remove(serial);
-                    return rr;
-                }
-                else
-                {
-                      // We need some special code here for the Samsung RIL,
-                      // which isn't responding to some requests.
-                      // We will print a list of such stale requests which
-                      // haven't yet received a response. If the timeout fires
-                      // first, then the wakelock is released without debugging.
-                    timeDiff = removalTime - rr.creationTime;
-                    if ( timeDiff > mWakeLockTimeout ) {
-                        Rlog.d(RILJ_LOG_TAG, "No response for [" + rr.mSerial + "] " +
-                                requestToString(rr.mRequest) + " after " + timeDiff + " milliseconds.");
-
-                        /* Don't actually remove anything for now. Consider uncommenting this to
-                           purge stale requests */
-
-                        /*
-                        itr.remove();
-                        if (mRequestMessagesWaiting > 0) {
-                            mRequestMessagesWaiting--;
-                        }
-
-                        // We don't handle the callback (ie. rr.mResult) for
-                        // RIL_REQUEST_SET_TTY_MODE, which is
-                        // RIL_REQUEST_QUERY_TTY_MODE. The reason for not doing
-                        // so is because it will also not get a response from the
-                        // Samsung RIL
-                        rr.release();
-                        */
-                    }
-                }
-            }
-        return null;
-    }
-
-    @Override
     protected RILRequest processSolicited (Parcel p) {
     int serial, error;
     boolean found = false;
@@ -553,9 +522,8 @@ public class SamsungU8500RIL extends RIL implements CommandsInterface {
             AsyncResult.forMessage(rr.mResult, ret, null);
             rr.mResult.sendToTarget();
         }
-
-	return rr;
-   }
+        return rr;
+    }
 
     @Override
     public void
@@ -819,26 +787,6 @@ public class SamsungU8500RIL extends RIL implements CommandsInterface {
         }
 
         Collections.sort(response);
-
-        return response;
-    }
-
-    @Override
-    protected Object responseGetPreferredNetworkType(Parcel p) {
-        int [] response = (int[]) responseInts(p);
-
-        if (response.length >= 1) {
-            // Since this is the response for getPreferredNetworkType
-            // we'll assume that it should be the value we want the
-            // vendor ril to take if we reestablish a connection to it.
-            mPreferredNetworkType = response[0];
-        }
-
-        // When the modem responds Phone.NT_MODE_GLOBAL, it means Phone.NT_MODE_WCDMA_PREF
-        if (response[0] == Phone.NT_MODE_GLOBAL) {
-            Rlog.d(RILJ_LOG_TAG, "Overriding network type response from GLOBAL to WCDMA preferred");
-            response[0] = Phone.NT_MODE_WCDMA_PREF;
-        }
 
         return response;
     }
