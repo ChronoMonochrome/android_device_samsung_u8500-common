@@ -193,7 +193,6 @@ struct audio_config {
     uint32_t sample_rate;
     audio_channel_mask_t channel_mask;
     audio_format_t  format;
-    audio_offload_info_t offload_info;
 };
 typedef struct audio_config audio_config_t;
 
